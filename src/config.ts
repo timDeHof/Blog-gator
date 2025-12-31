@@ -35,18 +35,9 @@ export function validateConfig(rawConfig: any) {
 export function readConfig(): Config {
   const fullPath = getConfigFilePath();
 
-  if (!fs.existsSync(fullPath)) {
-    throw new Error(`Config file not found at ${fullPath}`);
-  }
-
   const data = fs.readFileSync(fullPath, "utf-8");
-  if (!data.trim()) {
-    throw new Error(
-      `Config file at ${fullPath} is empty or contains only whitespace`
-    );
-  }
-
   const rawConfig = JSON.parse(data);
+
   return validateConfig(rawConfig);
 }
 
@@ -64,5 +55,5 @@ export function writeConfig(config: Config): void {
   };
 
   const data = JSON.stringify(rawConfig, null, 2);
-  fs.writeFileSync(fullPath, data, "utf-8");
+  fs.writeFileSync(fullPath, data, { encoding: "utf-8" });
 }
