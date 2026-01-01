@@ -1,5 +1,10 @@
-import { setUser } from "../config";
-import { createUser, getUserByName, truncateUsers } from "src/lib/db/queries/users";
+import { setUser, readConfig } from "../config";
+import {
+  createUser,
+  getUserByName,
+  deleteUsers,
+  getUsers,
+} from "src/lib/db/queries/users";
 export async function handlerLogin(
   cmdName: string,
   ...args: string[]
@@ -34,11 +39,15 @@ export async function handlerRegister(
   console.log(`User ${user.name} created successfully`);
 }
 
-/* Truncate the users table */
-export async function handlerTruncateUsers(
-  cmdName: string,
-  ...args: string[]
-): Promise<void> {
-  await truncateUsers();
-  console.log("Users table truncated successfully");
+/* Resets the users table */
+export async function handlerDeleteUsers(): Promise<void> {
+  await deleteUsers();
+  console.log("Users deleted successfully");
+}
+
+export async function handlerGetUsers(): Promise<void> {
+  const config = readConfig();
+  const currentUserName = config.currentUserName;
+  const users = await getUsers();
+  users.map((user) => console.log(`* ${user.name} ${user.name === currentUserName ? '(current)' : ''}`));
 }

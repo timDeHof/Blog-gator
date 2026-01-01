@@ -7,9 +7,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
-    "db:generate": "drizzle-kit generate:pg",
+    "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push:pg",
+    "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"
   },
   "keywords": [],
@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "drizzle-orm": "^0.45.1",
+    "fast-xml-parser": "^5.3.3",
     "postgres": "^3.4.7"
   }
 }

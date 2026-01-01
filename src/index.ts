@@ -6,8 +6,11 @@ import {
 import {
   handlerLogin,
   handlerRegister,
-  handlerTruncateUsers,
+  handlerDeleteUsers,
+  handlerGetUsers,
 } from "./commands/users";
+import { handlerAgg } from "./commands/aggregate";
+import { handlerAddFeed, handlerListFeeds } from "./commands/feeds";
 async function main() {
   const args = process.argv.slice(2);
   if (args.length < 1) {
@@ -21,12 +24,11 @@ async function main() {
 
   await registerCommand(commandsRegistry, "login", handlerLogin);
   await registerCommand(commandsRegistry, "register", handlerRegister);
-  await registerCommand(
-    commandsRegistry,
-    "truncate-users",
-    handlerTruncateUsers
-  );
-
+  await registerCommand(commandsRegistry, "reset", handlerDeleteUsers);
+  await registerCommand(commandsRegistry, "users", handlerGetUsers);
+  await registerCommand(commandsRegistry, "agg", handlerAgg);
+  await registerCommand(commandsRegistry, "addfeed", handlerAddFeed);
+  await registerCommand(commandsRegistry, "feeds", handlerListFeeds);
   try {
     await runCommand(commandsRegistry, cmdName, ...cmdArgs);
   } catch (err) {
