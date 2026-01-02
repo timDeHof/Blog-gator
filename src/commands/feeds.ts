@@ -4,11 +4,11 @@ import { createFeedFollow } from "src/lib/db/queries/follows";
 import { Feed, User } from "src/lib/db/schema";
 import { readConfig } from "src/config";
 
-import { createFeed, listFeeds } from "src/lib/db/queries/feeds";
-import { createFeedFollow } from "src/lib/db/queries/follows";
-import { Feed, User } from "src/lib/db/schema";
-
-export async function handlerAddFeed(cmdName: string, user: User, ...args: string[]) {
+export async function handlerAddFeed(
+  cmdName: string,
+  user: User,
+  ...args: string[]
+) {
   if (args.length !== 2) {
     throw new Error(`usage: ${cmdName} <feed name> <feed url>`);
   }

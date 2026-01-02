@@ -5,7 +5,11 @@ import {
   getFeedFollowsForUser,
 } from "src/lib/db/queries/follows";
 
-export async function handlerFollowFeed(cmdName: string, user: User, ...args: string[]) {
+export async function handlerFollowFeed(
+  cmdName: string,
+  user: User,
+  ...args: string[]
+) {
   if (args.length !== 1) {
     throw new Error(`usage: ${cmdName} <feed url>`);
   }
@@ -15,9 +19,14 @@ export async function handlerFollowFeed(cmdName: string, user: User, ...args: st
 
   // If feed doesn't exist, create it automatically
   if (!feed) {
-    // Extract a name from the URL for the feed
+    let url;
     try {
-      const url = new URL(feedUrl);
+      url = new URL(feedUrl);
+    } catch (error) {
+      throw new Error(`Invalid URL: ${feedUrl}`);
+    }
+
+    try {
       const feedName = url.hostname.replace("www.", "");
       feed = await createFeed(feedName, feedUrl, user.id);
 
@@ -25,19 +34,39 @@ export async function handlerFollowFeed(cmdName: string, user: User, ...args: st
         throw new Error(`Failed to create feed for URL ${feedUrl}`);
       }
     } catch (error) {
-      throw new Error(`Invalid URL: ${feedUrl}`);
+      if (error instanceof Error && error.message.startsWith('Invalid URL')) {
+        throw error;
+      }
+      throw new Error(`Failed to create feed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
-  const feedFollow = await createFeedFollow(feed.id, user.id);
+  try {
+    const feedFollow = await createFeedFollow(feed.id, user.id);
 
-  if (!feedFollow) {
-    throw new Error(`Feed follow not created`);
+    if (!feedFollow) {
+      throw new Error(`Feed follow not created`);
+    }
+
+    console.log(`Feed follow created successfully:`);
+    console.log(`  Feed: ${feedFollow.feed_name}`);
+    console.log(`  User: ${feedFollow.user_name}`);
+  } catch (error) {
+    if (error instanceof Error) {
+      // Check for unique constraint violation (duplicate follow)
+      if (
+        error.message.includes("unique constraint") ||
+        error.message.includes("duplicate key") ||
+        error.message.includes("already exists")
+      ) {
+        throw new Error(`You are already following this feed`);
+      }
+
+      throw new Error(`Failed to follow feed: ${error.message}`);
+    }
+
+    throw new Error(`Failed to follow feed due to an unexpected error`);
   }
-
-  console.log(`Feed follow created successfully:`);
-  console.log(`  Feed: ${feedFollow.feed_name}`);
-  console.log(`  User: ${feedFollow.user_name}`);
 }
 export async function handlerFollowing(cmdName: string, user: User) {
   const feedsFollowed = await getFeedFollowsForUser(user.id);

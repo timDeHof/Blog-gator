@@ -27,7 +27,9 @@ export async function listFeeds() {
   return result;
 }
 
-export async function getFeedByUrl(url: string) {
+export async function getFeedByUrl(
+  url: string
+): Promise<typeof feeds.$inferSelect | undefined> {
   const [result] = await db.select().from(feeds).where(eq(feeds.url, url));
   return result;
 }

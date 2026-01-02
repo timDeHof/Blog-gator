@@ -10,6 +10,7 @@ import {
   handlerDeleteUsers,
   handlerGetUsers,
 } from "./commands/users";
+import { middlewareAdminOnly } from "./middleware";
 import { handlerAgg } from "./commands/aggregate";
 import { handlerAddFeed, handlerListFeeds } from "./commands/feeds";
 import { handlerFollowFeed, handlerFollowing } from "./commands/follows";
@@ -27,7 +28,11 @@ async function main() {
 
   await registerCommand(commandsRegistry, "login", handlerLogin);
   await registerCommand(commandsRegistry, "register", handlerRegister);
-  await registerCommand(commandsRegistry, "reset", handlerDeleteUsers);
+  await registerCommand(
+    commandsRegistry,
+    "reset",
+    middlewareAdminOnly(handlerDeleteUsers)
+  );
   await registerCommand(commandsRegistry, "users", handlerGetUsers);
   await registerCommand(commandsRegistry, "agg", handlerAgg);
   await registerCommand(

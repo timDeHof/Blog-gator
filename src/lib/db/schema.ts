@@ -1,4 +1,11 @@
-import { pgTable, timestamp, uuid, text, unique } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  timestamp,
+  uuid,
+  text,
+  unique,
+  index,
+} from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom().notNull(),
@@ -8,6 +15,7 @@ export const users = pgTable("users", {
     .defaultNow()
     .$onUpdate(() => new Date()),
   name: text("name").notNull().unique(),
+  isAdmin: text("is_admin").notNull().default("false"),
 });
 
 export const feeds = pgTable("feeds", {
@@ -43,6 +51,7 @@ export const feed_follows = pgTable(
   (table) => {
     return {
       uniqueUserFeedPair: unique().on(table.user_id, table.feed_id),
+      feedIdIndex: index("feed_id_idx").on(table.feed_id),
     };
   }
 );
