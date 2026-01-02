@@ -7,6 +7,31 @@ import {
 } from "src/lib/db/queries/users";
 import { logAuditAction } from "../lib/logger";
 
+/**
+ * Safely masks a username to protect PII
+ * For short usernames (< 5 chars), uses a fixed placeholder
+ * For longer usernames, shows first 2 chars + *** + last 2 chars
+ */
+function maskUsername(username: string): string {
+  if (!username || username.length === 0) {
+    return "***";
+  }
+
+  // For very short usernames, use a safe fallback
+  if (username.length <= 4) {
+    // Use a stronger mask that doesn't reveal characters
+    return "***";
+  }
+
+  // For longer usernames, use the original masking approach
+  // Guard substring calls with length checks
+  const firstChars =
+    username.length >= 2 ? username.substring(0, 2) : username.substring(0, 1);
+  const lastChars =
+    username.length >= 2 ? username.substring(username.length - 2) : "";
+  return `${firstChars}***${lastChars}`;
+}
+
 export async function handlerLogin(
   cmdName: string,
   ...args: string[]
@@ -19,9 +44,7 @@ export async function handlerLogin(
   const existingUser = await getUserByName(userName);
   if (!existingUser) {
     // Log diagnostic information without exposing PII
-    const maskedUsername = `${userName.substring(0, 2)}***${userName.substring(
-      userName.length - 2
-    )}`;
+    const maskedUsername = maskUsername(userName);
     logAuditAction(
       "USER_NOT_FOUND",
       maskedUsername,
@@ -46,9 +69,7 @@ export async function handlerRegister(
   const user = await createUser(userName);
   if (!user) {
     // Log diagnostic information without exposing PII
-    const maskedUsername = `${userName.substring(0, 2)}***${userName.substring(
-      userName.length - 2
-    )}`;
+    const maskedUsername = maskUsername(userName);
     logAuditAction(
       "USER_CREATION_FAILED",
       maskedUsername,
@@ -87,10 +108,7 @@ export async function handlerDeleteUsers(
   // Validate that the user is an admin (redundant check, but good to be explicit)
   if (!user.isAdmin) {
     // Log diagnostic information without exposing PII
-    const maskedUsername = `${user.name.substring(
-      0,
-      2
-    )}***${user.name.substring(user.name.length - 2)}`;
+    const maskedUsername = maskUsername(user.name);
     logAuditAction(
       "UNAUTHORIZED_ADMIN_ACCESS",
       maskedUsername,
@@ -100,10 +118,11 @@ export async function handlerDeleteUsers(
   }
 
   // Log the audit action before performing the destructive operation
+  const maskedUsername = maskUsername(user.name);
   logAuditAction(
     "USER_RESET_INITIATED",
-    user.name,
-    `Initiated by ${user.name}`
+    maskedUsername,
+    `Initiated by ${maskedUsername}`
   );
 
   try {
@@ -113,14 +132,14 @@ export async function handlerDeleteUsers(
     // Log successful completion
     logAuditAction(
       "USER_RESET_COMPLETED",
-      user.name,
-      `Completed by ${user.name}`
+      maskedUsername,
+      `Completed by ${maskedUsername}`
     );
   } catch (error) {
     // Log failure
     logAuditAction(
       "USER_RESET_FAILED",
-      user.name,
+      maskedUsername,
       `Failed: ${error instanceof Error ? error.message : String(error)}`
     );
     throw error;

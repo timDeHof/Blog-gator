@@ -5,7 +5,8 @@ import path from "path";
 type Config = {
   dbUrl: string;
   currentUserName: string;
-  maskPII?: boolean; // Optional PII masking configuration
+  maskPII: boolean; // PII masking configuration (always set by validateConfig)
+  maxLength?: number; // Optional max length configuration
 };
 
 export function setUser(userName: string) {
@@ -26,10 +27,24 @@ export function validateConfig(rawConfig: any) {
   ) {
     throw new Error("Missing 'current_user_name' property");
   }
+
+  // Validate mask_pii is a boolean, default to true if invalid
+  let maskPII = true; // Default value
+  if (rawConfig.mask_pii !== undefined) {
+    if (typeof rawConfig.mask_pii === "boolean") {
+      maskPII = rawConfig.mask_pii;
+    } else {
+      console.warn(
+        `Invalid type for 'mask_pii': expected boolean, got ${typeof rawConfig.mask_pii}. Using default value: true`
+      );
+    }
+  }
+
   const config: Config = {
     dbUrl: rawConfig.db_url,
     currentUserName: rawConfig.current_user_name,
-    maskPII: rawConfig.mask_pii !== undefined ? rawConfig.mask_pii : true, // Default to true for privacy
+    maskPII: maskPII, // Use validated boolean value
+    maxLength: rawConfig.max_length !== undefined ? rawConfig.max_length : 1000, // Default to 1000
   };
   return config;
 }
@@ -55,6 +70,7 @@ export function writeConfig(config: Config): void {
     db_url: config.dbUrl,
     current_user_name: config.currentUserName,
     mask_pii: config.maskPII,
+    max_length: config.maxLength,
   };
 
   const data = JSON.stringify(rawConfig, null, 2);

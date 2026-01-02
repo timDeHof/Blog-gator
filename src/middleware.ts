@@ -33,18 +33,12 @@ function getCacheTTLFromEnv(envVarName: string, defaultValue: number): number {
 /**
  * Cache Configuration Strategy:
  *
- * This middleware implements a two-tier caching strategy for performance and security:
+ * This middleware implements a caching strategy for performance and security:
  *
- * 1. CACHE_TTL_SECONDS (default: 60 seconds):
- *    - Used for regular user data caching in middlewareLoggedIn
- *    - Provides performance benefits for non-admin operations
- *    - Configurable via environment variable
- *
- * 2. ADMIN_CACHE_TTL_SECONDS (default: 0 seconds = disabled):
- *    - NOTE: This parameter is now deprecated and ignored
- *    - Admin authorization checks ALWAYS bypass caching to prevent stale admin privileges
- *    - Ensures admin privilege revocations take effect immediately
- *    - Configurable via environment variable for flexibility (though now ignored)
+ * CACHE_TTL_SECONDS (default: 60 seconds):
+ * - Used for regular user data caching in middlewareLoggedIn
+ * - Provides performance benefits for non-admin operations
+ * - Configurable via environment variable
  *
  * Security Considerations:
  * - Admin authorization checks ALWAYS bypass caching to prevent stale admin privileges
@@ -59,16 +53,10 @@ function getCacheTTLFromEnv(envVarName: string, defaultValue: number): number {
  *
  * Environment Variables:
  * - CACHE_TTL_SECONDS: Set to desired TTL in seconds for regular user caching
- * - ADMIN_CACHE_TTL_SECONDS: Deprecated - admin checks always use fresh data
  */
 // Cache configuration - configurable TTL in seconds
 // CACHE_TTL_SECONDS: Default cache TTL for regular user data (default: 60 seconds)
-// ADMIN_CACHE_TTL_SECONDS: Cache TTL for admin authorization checks (default: 0 seconds = disabled)
 const CACHE_TTL_SECONDS = getCacheTTLFromEnv("CACHE_TTL_SECONDS", 60);
-const ADMIN_CACHE_TTL_SECONDS = getCacheTTLFromEnv(
-  "ADMIN_CACHE_TTL_SECONDS",
-  0
-);
 
 /**
  * Validates the currentUserName from config and returns the trimmed username.
@@ -91,6 +79,24 @@ function validateAndGetUserName(): string {
   return config.currentUserName.trim();
 }
 
+/**
+ * Safely masks a username to protect PII while maintaining some identifiability for logging.
+ * For short usernames (under 4 characters), returns a fixed mask to prevent exposure.
+ * For longer usernames, uses partial masking (first 2 + last 2 characters).
+ * @param username The username to mask
+ * @returns The masked username
+ */
+function maskUsername(username: string): string {
+  if (username.length < 4) {
+    // For short usernames, use a fixed mask to prevent exposure
+    return "***";
+  }
+  // For longer usernames, use partial masking
+  return `${username.substring(0, 2)}***${username.substring(
+    username.length - 2
+  )}`;
+}
+
 // In-memory cache structure
 interface UserCacheEntry {
   user: User;
@@ -107,26 +113,32 @@ const pendingRequests: Record<string, Promise<User>> = {};
 /**
  * Shared helper function to get cached user or fetch fresh user data
  * @param userName The username to fetch or get from cache
+ * @param bypassCache If true, always fetch fresh data bypassing cache
  * @returns Promise<User> - The user data
  * @throws Error if user not found
  */
-async function getCachedOrFetchUser(userName: string): Promise<User> {
+async function getCachedOrFetchUser(
+  userName: string,
+  bypassCache: boolean = false
+): Promise<User> {
   const cacheKey = userName;
   const currentTime = Date.now();
 
-  // Check if we have cached user data
-  const cachedEntry = userCache[cacheKey];
+  // Check if we have cached user data (skip if bypassCache is true)
+  if (!bypassCache) {
+    const cachedEntry = userCache[cacheKey];
 
-  if (cachedEntry) {
-    // Check if cache is still valid (not expired)
-    const cacheAgeSeconds = (currentTime - cachedEntry.timestamp) / 1000;
+    if (cachedEntry) {
+      // Check if cache is still valid (not expired)
+      const cacheAgeSeconds = (currentTime - cachedEntry.timestamp) / 1000;
 
-    if (cacheAgeSeconds < CACHE_TTL_SECONDS) {
-      // Cache is valid, but check if config username changed
-      // (this shouldn't happen normally, but good to be defensive)
-      if (cachedEntry.configUserName === userName) {
-        // Return cached user
-        return cachedEntry.user;
+      if (cacheAgeSeconds < CACHE_TTL_SECONDS) {
+        // Cache is valid, but check if config username changed
+        // (this shouldn't happen normally, but good to be defensive)
+        if (cachedEntry.configUserName === userName) {
+          // Return cached user
+          return cachedEntry.user;
+        }
       }
     }
   }
@@ -153,9 +165,7 @@ async function getCachedOrFetchUser(userName: string): Promise<User> {
 
   if (!user) {
     // Log diagnostic information without exposing PII
-    const maskedUsername = `${userName.substring(0, 2)}***${userName.substring(
-      userName.length - 2
-    )}`;
+    const maskedUsername = maskUsername(userName);
     logAuditAction(
       "USER_NOT_FOUND",
       maskedUsername,
@@ -167,7 +177,7 @@ async function getCachedOrFetchUser(userName: string): Promise<User> {
   // Update cache with fresh data
   userCache[cacheKey] = {
     user,
-    timestamp: currentTime,
+    timestamp: Date.now(),
     configUserName: userName,
   };
 
@@ -205,48 +215,12 @@ export const middlewareAdminOnly = (
     // admin privilege revocations take effect immediately
     const cacheKey = currentUserName;
     const currentTime = Date.now();
-
-    // Bypass cache for admin check - always fetch fresh
-    let freshUser: User;
-    if (!pendingRequests[cacheKey]) {
-      // No pending request, create one
-      pendingRequests[cacheKey] = getUserByName(currentUserName)
-        .then((user) => {
-          // Clean up pending request on success
-          delete pendingRequests[cacheKey];
-          return user;
-        })
-        .catch((err) => {
-          // Clean up pending request on failure
-          delete pendingRequests[cacheKey];
-          throw err;
-        });
-    }
-
-    // Wait for the pending request (either existing or just created)
-    freshUser = await pendingRequests[cacheKey];
-
-    if (!freshUser) {
-      // Log diagnostic information without exposing PII
-      const maskedUsername = `${currentUserName.substring(
-        0,
-        2
-      )}***${currentUserName.substring(currentUserName.length - 2)}`;
-      logAuditAction(
-        "USER_NOT_FOUND",
-        maskedUsername,
-        `User lookup failed for masked username: ${maskedUsername}`
-      );
-      throw new Error("User not found");
-    }
+    const freshUser = await getCachedOrFetchUser(currentUserName, true);
 
     // Check if user is admin using fresh data
     if (!freshUser.isAdmin) {
       // Log diagnostic information without exposing PII
-      const maskedUsername = `${currentUserName.substring(
-        0,
-        2
-      )}***${currentUserName.substring(currentUserName.length - 2)}`;
+      const maskedUsername = maskUsername(currentUserName);
       logAuditAction(
         "UNAUTHORIZED_ADMIN_ACCESS",
         maskedUsername,
@@ -255,32 +229,15 @@ export const middlewareAdminOnly = (
       throw new Error("User not authorized for admin commands");
     }
 
-    // For non-admin data, we can use cached data if available and not expired
-    // This preserves performance for regular user data while ensuring admin checks are always fresh
-    const cachedEntry = userCache[cacheKey];
-    let userDataToPass = freshUser; // Default to fresh data
-
-    if (cachedEntry) {
-      // Check if cache is still valid (not expired)
-      const cacheAgeSeconds = (currentTime - cachedEntry.timestamp) / 1000;
-
-      if (
-        cacheAgeSeconds < CACHE_TTL_SECONDS &&
-        cachedEntry.configUserName === currentUserName
-      ) {
-        // Use cached data for non-admin properties to maintain performance
-        // But we've already verified admin status with fresh data above
-        userDataToPass = cachedEntry.user;
-      }
-    }
-
-    // Update cache with fresh data (but only if we fetched fresh data)
+    // Update cache with fresh data for future requests
+    // This ensures subsequent requests can benefit from caching while current request always uses fresh data
     userCache[cacheKey] = {
       user: freshUser,
-      timestamp: currentTime,
+      timestamp: Date.now(),
       configUserName: currentUserName,
     };
 
-    return handler(cmdName, userDataToPass, ...args);
+    // Always pass fresh user data to handler to ensure consistency
+    return handler(cmdName, freshUser, ...args);
   };
 };

@@ -41,17 +41,24 @@ export async function handlerListFeeds(cmdName: string) {
 
   if (!user) {
     // Log diagnostic information without exposing PII
-    const maskedUsername = `${config.currentUserName.substring(
-      0,
-      2
-    )}***${config.currentUserName.substring(
-      config.currentUserName.length - 2
-    )}`;
-    logAuditAction(
-      "USER_NOT_FOUND",
-      maskedUsername,
-      `User lookup failed for masked username: ${maskedUsername}`
-    );
+    // Validate config.currentUserName and create appropriate mask
+    let maskedUsername = "***"; // Safe default fallback
+    if (
+      typeof config.currentUserName === "string" &&
+      config.currentUserName.length > 0
+    ) {
+      if (config.currentUserName.length < 4) {
+        // For short names, return mask of same length to avoid revealing characters
+        maskedUsername = "*".repeat(config.currentUserName.length);
+      } else {
+        // For longer names, use first 2 chars + '***'+ last 2 chars
+        maskedUsername = `${config.currentUserName.slice(
+          0,
+          2
+        )}***${config.currentUserName.slice(-2)}`;
+      }
+    }
+    logAuditAction("USER_NOT_FOUND", maskedUsername, `User lookup failed`);
     throw new Error("User not found");
   }
 

@@ -5,6 +5,29 @@ type SanitizerConfig = {
   maxLength: number;
 };
 
+/**
+ * PII types for common personally identifiable information
+ */
+export type PIIType = "email" | "phone" | "url" | "default";
+
+/**
+ * Get default preserve characters for each PII type
+ */
+function getPreserveCharsForType(piiType: PIIType): string {
+  switch (piiType) {
+    case "email":
+      return "@.";
+    case "phone":
+      return "+-()";
+    case "url":
+      return ":/?&=#";
+    case "default":
+      return "@."; // Default for backward compatibility
+    default:
+      return "@.";
+  }
+}
+
 export class InputSanitizer {
   private config: SanitizerConfig;
 
@@ -26,18 +49,18 @@ export class InputSanitizer {
   public sanitizeString(
     input: unknown,
     fieldName: string,
-    options: { isPII?: boolean; allowEmpty?: boolean } = {}
+    options: {
+      isPII?: boolean;
+      allowEmpty?: boolean;
+      preserveChars?: string;
+      piiType?: PIIType;
+    } = {}
   ): string {
     // Type validation
     if (typeof input !== "string") {
       throw new Error(
         `Invalid ${fieldName}: must be a string, got ${typeof input}`
       );
-    }
-
-    // Empty validation
-    if (!options.allowEmpty && input.trim() === "") {
-      throw new Error(`Invalid ${fieldName}: cannot be empty`);
     }
 
     // Length validation
@@ -52,7 +75,17 @@ export class InputSanitizer {
 
     // PII handling for user-related fields
     if (options.isPII && this.config.maskPII) {
-      sanitized = this.maskPII(sanitized);
+      // Determine preserveChars: explicit value takes precedence, then piiType, then default
+      let preserveChars = options.preserveChars;
+      if (!preserveChars && options.piiType) {
+        preserveChars = getPreserveCharsForType(options.piiType);
+      }
+      sanitized = this.maskPII(sanitized, preserveChars);
+    }
+
+    // Empty validation after sanitization
+    if (!options.allowEmpty && sanitized.trim() === "") {
+      throw new Error(`Invalid ${fieldName}: cannot be empty`);
     }
 
     return sanitized;
@@ -62,8 +95,9 @@ export class InputSanitizer {
    * Remove control characters that could be used for log injection
    */
   private removeControlCharacters(input: string): string {
-    // Remove newline, carriage return, tab, and other control characters
-    // Keep only printable ASCII characters and common whitespace
+    // Remove non-printable control characters while preserving tab (\x09), newline (\x0A), and carriage return (\x0D)
+    // These preserved characters are later normalized to spaces by normalizeWhitespace()
+    // Removes control characters in ranges: \x00-\x08, \x0B-\x0C, \x0E-\x1F, and \x7F
     return input.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
   }
 
@@ -77,16 +111,49 @@ export class InputSanitizer {
 
   /**
    * Mask PII by showing only first character and last character with asterisks
+   * For emails, masks only the local part (before @) preserving first and last char of local part
    * Example: "john.doe@example.com" -> "j***e@example.com"
+   * @param input The string to mask
+   * @param preserveChars Characters to preserve in the middle section (default: '@.')
    */
-  private maskPII(input: string): string {
+  private maskPII(input: string, preserveChars: string = "@."): string {
     if (input.length <= 2) {
       return input; // Too short to mask meaningfully
     }
 
+    // Special handling for email addresses
+    if (preserveChars === "@." && input.includes("@")) {
+      const parts = input.split("@");
+      const localPart = parts[0];
+      const domainPart = "@" + parts.slice(1).join("@");
+
+      if (localPart.length <= 2) {
+        return input; // Too short to mask meaningfully
+      }
+
+      const firstChar = localPart[0];
+      const lastChar = localPart[localPart.length - 1];
+
+      // Always use exactly 3 asterisks for email masking (established behavior)
+      const maskedLocalPart = firstChar + "***" + lastChar;
+
+      return maskedLocalPart + domainPart;
+    }
+
     const firstChar = input[0];
     const lastChar = input[input.length - 1];
-    const middle = input.slice(1, -1).replace(/[^@.]/g, "*");
+
+    // Escape special regex characters in preserveChars for dynamic pattern
+    // Note: hyphen needs special handling - either escape it or place it at start/end
+    const escapedPreserveChars = preserveChars.replace(
+      /[.*+?^${}()|[\]\\-]/g,
+      "\\$&"
+    );
+
+    // Build regex pattern to match characters NOT in preserveChars set
+    const pattern = new RegExp(`[^${escapedPreserveChars}]`, "g");
+
+    const middle = input.slice(1, -1).replace(pattern, "*");
 
     return firstChar + middle + lastChar;
   }
@@ -98,13 +165,12 @@ export class InputSanitizer {
     try {
       const config = readConfig();
       return new InputSanitizer({
-        maskPII: config.maskPII ?? true, // Use config setting or default to true
+        maskPII: config.maskPII,
+        maxLength: config.maxLength,
       });
     } catch (error) {
       // If config can't be read, use default secure settings
-      return new InputSanitizer({
-        maskPII: true,
-      });
+      return new InputSanitizer();
     }
   }
 }

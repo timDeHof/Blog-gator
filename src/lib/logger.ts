@@ -48,15 +48,12 @@ const configureWinstonLogger = () => {
     level: "info",
     transports: [fileTransport],
     exitOnError: false, // Do not exit on logging errors
-    handleExceptions: true,
-    handleRejections: true,
   });
 
   // Add error handling for write failures
   logger.on("error", (error) => {
     console.error("Winston logging error:", error);
     // Surface write errors via existing error handling
-    throw error;
   });
 
   return logger;
@@ -64,6 +61,9 @@ const configureWinstonLogger = () => {
 
 // Initialize logger
 const logger = configureWinstonLogger();
+
+// Export logger for use in other modules
+export { logger };
 
 export async function logAuditAction(
   action: string,
@@ -79,6 +79,7 @@ export async function logAuditAction(
   const sanitizedUserName = sanitizer.sanitizeString(userName, "userName", {
     isPII: true,
     allowEmpty: false,
+    piiType: "email", // Use email-specific masking for usernames
   });
   const sanitizedDetails = sanitizer.sanitizeString(details, "details", {
     allowEmpty: true,
@@ -97,9 +98,8 @@ export async function logAuditAction(
   // Use Winston logger for async writes with rotation
   return new Promise((resolve, reject) => {
     try {
-      // Convert log entry to string for Winston
-      const logMessage = JSON.stringify(logEntry);
-      logger.info(logMessage, (error: unknown) => {
+      // Pass log entry as metadata to Winston for proper JSON formatting
+      logger.info("", logEntry, (error: unknown) => {
         if (error) {
           console.error("Failed to write audit log:", error);
           reject(error);
