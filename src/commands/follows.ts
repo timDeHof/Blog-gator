@@ -27,17 +27,19 @@ export async function handlerFollowFeed(
     }
 
     try {
-      const feedName = url.hostname.replace("www.", "");
+      const feedName = url.hostname.startsWith("www.")
+        ? url.hostname.slice(4)
+        : url.hostname;
       feed = await createFeed(feedName, feedUrl, user.id);
 
       if (!feed) {
         throw new Error(`Failed to create feed for URL ${feedUrl}`);
       }
     } catch (error) {
-      if (error instanceof Error && error.message.startsWith('Invalid URL')) {
+      if (error instanceof Error) {
         throw error;
       }
-      throw new Error(`Failed to create feed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to create feed: ${String(error)}`);
     }
   }
 
@@ -53,15 +55,14 @@ export async function handlerFollowFeed(
     console.log(`  User: ${feedFollow.user_name}`);
   } catch (error) {
     if (error instanceof Error) {
-      // Check for unique constraint violation (duplicate follow)
-      if (
-        error.message.includes("unique constraint") ||
-        error.message.includes("duplicate key") ||
-        error.message.includes("already exists")
-      ) {
+      // Check for unique constraint violation using PostgreSQL error code
+      // PostgreSQL uses error code '23505' for unique constraint violations
+      const postgresError = error as any;
+      if (postgresError.code === "23505") {
         throw new Error(`You are already following this feed`);
       }
 
+      // For other database errors, preserve the original error details
       throw new Error(`Failed to follow feed: ${error.message}`);
     }
 

@@ -5,6 +5,7 @@ import path from "path";
 type Config = {
   dbUrl: string;
   currentUserName: string;
+  maskPII?: boolean; // Optional PII masking configuration
 };
 
 export function setUser(userName: string) {
@@ -28,6 +29,7 @@ export function validateConfig(rawConfig: any) {
   const config: Config = {
     dbUrl: rawConfig.db_url,
     currentUserName: rawConfig.current_user_name,
+    maskPII: rawConfig.mask_pii !== undefined ? rawConfig.mask_pii : true, // Default to true for privacy
   };
   return config;
 }
@@ -52,6 +54,7 @@ export function writeConfig(config: Config): void {
   const rawConfig = {
     db_url: config.dbUrl,
     current_user_name: config.currentUserName,
+    mask_pii: config.maskPII,
   };
 
   const data = JSON.stringify(rawConfig, null, 2);

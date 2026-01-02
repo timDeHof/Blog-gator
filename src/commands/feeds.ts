@@ -3,6 +3,7 @@ import { getUserByName } from "src/lib/db/queries/users";
 import { createFeedFollow } from "src/lib/db/queries/follows";
 import { Feed, User } from "src/lib/db/schema";
 import { readConfig } from "src/config";
+import { logAuditAction } from "src/lib/logger";
 
 export async function handlerAddFeed(
   cmdName: string,
@@ -39,7 +40,19 @@ export async function handlerListFeeds(cmdName: string) {
   const user = await getUserByName(config.currentUserName);
 
   if (!user) {
-    throw new Error(`User ${config.currentUserName} not found`);
+    // Log diagnostic information without exposing PII
+    const maskedUsername = `${config.currentUserName.substring(
+      0,
+      2
+    )}***${config.currentUserName.substring(
+      config.currentUserName.length - 2
+    )}`;
+    logAuditAction(
+      "USER_NOT_FOUND",
+      maskedUsername,
+      `User lookup failed for masked username: ${maskedUsername}`
+    );
+    throw new Error("User not found");
   }
 
   const feeds = await listFeeds();

@@ -2,108 +2,145 @@ import { db } from "..";
 import { eq } from "drizzle-orm";
 import { feed_follows, feeds, users } from "../schema";
 
+/**
+ * Type guard to check if an error is a database error with a code property
+ */
+function isDatabaseError(error: Error): error is DatabaseError {
+  return (
+    error &&
+    typeof error === "object" &&
+    "code" in error &&
+    typeof error.code === "string"
+  );
+}
+
+/**
+ * Type guard to check if an error is a custom application error
+ * Since we don't have custom error classes, this is a placeholder for future use
+ */
+function isCustomError(error: Error): boolean {
+  // Placeholder for future custom error handling
+  // Currently no custom errors are defined, so this always returns false
+  return false;
+}
+
+/**
+ * Extract constraint name from database error message
+ */
+function extractConstraintName(error: DatabaseError): string | null {
+  // Try to extract constraint name from error message
+  const constraintMatch = error.message.match(/constraint\s+[`"]([^`"]+)[`"]/i);
+  if (constraintMatch && constraintMatch[1]) {
+    return constraintMatch[1];
+  }
+
+  // Try to extract from constraint name property if available
+  if (error.constraint) {
+    return error.constraint;
+  }
+
+  return null;
+}
+
+/**
+ * Type definition for database errors with code and constraint properties
+ */
+interface DatabaseError extends Error {
+  code: string;
+  constraint?: string;
+  detail?: string;
+}
+
+// Export helper functions for testing
+export { isDatabaseError, extractConstraintName, isCustomError };
+
 export async function createFeedFollow(feedId: string, actorId: string) {
-  try {
-    // Use a transaction to ensure atomicity of insert + select
-    return await db.transaction(async (tx) => {
-      try {
-        // Attempt to insert the feed follow
-        const [newFeedFollow] = await tx
-          .insert(feed_follows)
-          .values({
-            feed_id: feedId,
-            user_id: actorId,
-          })
-          .returning();
+  // Use a transaction to ensure atomicity of insert + select
+  return await db.transaction(async (tx) => {
+    try {
+      // Attempt to insert the feed follow
+      const [newFeedFollow] = await tx
+        .insert(feed_follows)
+        .values({
+          feed_id: feedId,
+          user_id: actorId,
+        })
+        .returning();
 
-        // Use left joins to handle potential race conditions where feed/user might be deleted
-        const result = await tx
-          .select({
-            feed_follow_id: feed_follows.id,
-            feed_follow_created_at: feed_follows.createdAt,
-            feed_follow_updated_at: feed_follows.updatedAt,
-            feed_id: feeds.id,
-            feed_name: feeds.name,
-            feed_url: feeds.url,
-            user_id: users.id,
-            user_name: users.name,
-          })
-          .from(feed_follows)
-          .leftJoin(feeds, eq(feed_follows.feed_id, feeds.id))
-          .leftJoin(users, eq(feed_follows.user_id, users.id))
-          .where(eq(feed_follows.id, newFeedFollow.id))
-          .limit(1);
+      // Use inner joins since foreign key constraints prevent orphaned records
+      const result = await tx
+        .select({
+          feed_follow_id: feed_follows.id,
+          feed_follow_created_at: feed_follows.createdAt,
+          feed_follow_updated_at: feed_follows.updatedAt,
+          feed_id: feeds.id,
+          feed_name: feeds.name,
+          feed_url: feeds.url,
+          user_id: users.id,
+          user_name: users.name,
+        })
+        .from(feed_follows)
+        .innerJoin(feeds, eq(feed_follows.feed_id, feeds.id))
+        .innerJoin(users, eq(feed_follows.user_id, users.id))
+        .where(eq(feed_follows.id, newFeedFollow.id))
+        .limit(1);
 
-        const followData = result[0];
+      const followData = result[0];
 
-        // Check if feed or user are missing (race condition)
-        if (!followData) {
-          throw new Error("Failed to retrieve created feed follow");
+      // Check if result exists (basic safety check)
+      if (!followData) {
+        throw new Error("Failed to retrieve created feed follow");
+      }
+
+      return followData;
+    } catch (error) {
+      // First check if this is a custom error and re-throw it unchanged
+      if (error instanceof Error && isCustomError(error)) {
+        throw error;
+      }
+
+      // Normalize non-Error throwables to Error
+      if (!(error instanceof Error)) {
+        console.error("Unexpected error in createFeedFollow:", error);
+        throw new Error(
+          "An unexpected error occurred while creating the feed follow"
+        );
+      }
+
+      // Use typed guards to check for database error codes
+      if (isDatabaseError(error)) {
+        const dbError = error as DatabaseError;
+
+        // Handle unique constraint violation (PostgreSQL error code 23505)
+        if (dbError.code === "23505") {
+          throw new Error("You are already following this feed");
         }
-        if (!followData.feed_id) {
-          throw new Error("Feed not found - it may have been deleted");
-        }
-        if (!followData.user_id) {
-          throw new Error("User not found - it may have been deleted");
-        }
 
-        return followData;
-      } catch (error) {
-        // Map database errors to user-friendly messages
-        if (error instanceof Error) {
-          const errorMessage = error.message.toLowerCase();
-
-          // Handle unique constraint violation (duplicate follow)
-          if (
-            errorMessage.includes("unique constraint") ||
-            errorMessage.includes("already exists")
-          ) {
-            throw new Error("You are already following this feed");
-          }
-
-          // Handle foreign key violations
-          if (
-            errorMessage.includes("foreign key") ||
-            errorMessage.includes("violates foreign key constraint")
-          ) {
+        // Handle foreign key violations (PostgreSQL error code 23503)
+        if (dbError.code === "23503") {
+          const constraintName = extractConstraintName(dbError);
+          if (constraintName) {
             if (
-              errorMessage.includes("feed_id") ||
-              errorMessage.includes("feeds")
+              constraintName.includes("feed_id") ||
+              constraintName.includes("feeds")
             ) {
               throw new Error("Feed not found");
             } else if (
-              errorMessage.includes("user_id") ||
-              errorMessage.includes("users")
+              constraintName.includes("user_id") ||
+              constraintName.includes("users")
             ) {
               throw new Error("User not found");
             }
-            throw new Error("Referenced resource not found");
           }
-
-          // Handle null feed/user from race condition
-          if (
-            errorMessage.includes("feed not found") ||
-            errorMessage.includes("user not found")
-          ) {
-            throw error; // Re-throw our custom errors
-          }
+          throw new Error("Referenced resource not found");
         }
-
-        // For any other errors, provide a generic message
-        console.error("Database error in createFeedFollow:", error);
-        throw new Error("Failed to create feed follow due to a database error");
       }
-    });
-  } catch (error) {
-    // Handle transaction-level errors
-    if (error instanceof Error) {
-      throw error; // Re-throw the error from the transaction
+
+      // For any other errors, provide a generic message
+      console.error("Database error in createFeedFollow:", error);
+      throw new Error("Failed to create feed follow due to a database error");
     }
-    console.error("Unexpected error in createFeedFollow:", error);
-    throw new Error(
-      "An unexpected error occurred while creating the feed follow"
-    );
-  }
+  });
 }
 
 export async function getFeedFollowsForUser(userId: string) {

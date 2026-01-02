@@ -3,6 +3,7 @@ import {
   timestamp,
   uuid,
   text,
+  boolean,
   unique,
   index,
 } from "drizzle-orm/pg-core";
@@ -15,7 +16,7 @@ export const users = pgTable("users", {
     .defaultNow()
     .$onUpdate(() => new Date()),
   name: text("name").notNull().unique(),
-  isAdmin: text("is_admin").notNull().default("false"),
+  isAdmin: boolean("is_admin").notNull().default(false),
 });
 
 export const feeds = pgTable("feeds", {

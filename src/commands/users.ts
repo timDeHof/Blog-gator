@@ -6,6 +6,7 @@ import {
   getUsers,
 } from "src/lib/db/queries/users";
 import { logAuditAction } from "../lib/logger";
+
 export async function handlerLogin(
   cmdName: string,
   ...args: string[]
@@ -17,11 +18,21 @@ export async function handlerLogin(
   const userName = args[0];
   const existingUser = await getUserByName(userName);
   if (!existingUser) {
-    throw new Error(`User ${userName} does not exist`);
+    // Log diagnostic information without exposing PII
+    const maskedUsername = `${userName.substring(0, 2)}***${userName.substring(
+      userName.length - 2
+    )}`;
+    logAuditAction(
+      "USER_NOT_FOUND",
+      maskedUsername,
+      `User lookup failed for masked username: ${maskedUsername}`
+    );
+    throw new Error("User not found");
   }
   setUser(existingUser.name);
   console.log(`User switched successfully`);
 }
+
 /* Create a new user in the database */
 export async function handlerRegister(
   cmdName: string,
@@ -34,16 +45,31 @@ export async function handlerRegister(
   const userName = args[0];
   const user = await createUser(userName);
   if (!user) {
-    throw new Error(`User ${userName} already exists`);
+    // Log diagnostic information without exposing PII
+    const maskedUsername = `${userName.substring(0, 2)}***${userName.substring(
+      userName.length - 2
+    )}`;
+    logAuditAction(
+      "USER_CREATION_FAILED",
+      maskedUsername,
+      `User creation failed for masked username: ${maskedUsername} (user already exists)`
+    );
+    throw new Error("User already exists");
   }
   setUser(user.name);
-  console.log(`User ${user.name} created successfully`);
+  console.log(`User created successfully`);
 }
 
 /* Resets the users table */
 export async function handlerDeleteUsers(
   cmdName: string,
-  user: { name: string; isAdmin: string },
+  user: {
+    id: string;
+    name: string;
+    createdAt: Date;
+    updatedAt: Date;
+    isAdmin: boolean;
+  },
   ...args: string[]
 ): Promise<void> {
   // Check for confirmation flag
@@ -54,16 +80,24 @@ export async function handlerDeleteUsers(
       "ERROR: This is a destructive operation that deletes ALL users."
     );
     console.error("To confirm, use the --force or -f flag:");
-    console.error(`  cli reset --force`);
+    console.error(`  ${cmdName} --force`);
     throw new Error("Confirmation required: use --force flag to proceed");
   }
 
   // Validate that the user is an admin (redundant check, but good to be explicit)
-  if (user.isAdmin !== "true") {
-    throw new Error(`User ${user.name} is not authorized for this operation`);
+  if (!user.isAdmin) {
+    // Log diagnostic information without exposing PII
+    const maskedUsername = `${user.name.substring(
+      0,
+      2
+    )}***${user.name.substring(user.name.length - 2)}`;
+    logAuditAction(
+      "UNAUTHORIZED_ADMIN_ACCESS",
+      maskedUsername,
+      `Unauthorized admin access attempt by masked username: ${maskedUsername}`
+    );
+    throw new Error("User not authorized for this operation");
   }
-
-  const config = readConfig();
 
   // Log the audit action before performing the destructive operation
   logAuditAction(
@@ -97,7 +131,7 @@ export async function handlerGetUsers(): Promise<void> {
   const config = readConfig();
   const currentUserName = config.currentUserName;
   const users = await getUsers();
-  users.map((user) =>
+  users.forEach((user) =>
     console.log(
       `* ${user.name} ${user.name === currentUserName ? "(current)" : ""}`
     )

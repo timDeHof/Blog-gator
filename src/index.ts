@@ -1,4 +1,4 @@
-import { middlewareLoggedIn } from "./middleware";
+import { middlewareLoggedIn, middlewareAdminOnly } from "./middleware";
 import {
   type CommandsRegistry,
   registerCommand,
@@ -10,7 +10,6 @@ import {
   handlerDeleteUsers,
   handlerGetUsers,
 } from "./commands/users";
-import { middlewareAdminOnly } from "./middleware";
 import { handlerAgg } from "./commands/aggregate";
 import { handlerAddFeed, handlerListFeeds } from "./commands/feeds";
 import { handlerFollowFeed, handlerFollowing } from "./commands/follows";

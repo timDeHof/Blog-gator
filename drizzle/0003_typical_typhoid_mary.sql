@@ -1,1 +1,1 @@
-ALTER TABLE "users" ADD COLUMN "is_admin" text DEFAULT 'false' NOT NULL;
+ALTER TABLE "users" ADD COLUMN "is_admin" boolean DEFAULT false NOT NULL;
