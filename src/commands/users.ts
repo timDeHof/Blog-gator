@@ -5,7 +5,7 @@ import {
   deleteUsers,
   getUsers,
 } from "src/lib/db/queries/users";
-import { logAuditAction, logger } from "../lib/utils/logger";
+import { logAuditAction } from "../lib/logger";
 
 /**
  * Safely masks a username to protect PII
@@ -49,11 +49,11 @@ export async function handlerLogin(
       "USER_NOT_FOUND",
       maskedUsername,
       `User lookup failed for masked username: ${maskedUsername}`
-    ).catch((err) => logger.error("Failed to write audit log", err));
+    );
     throw new Error("User not found");
   }
   setUser(existingUser.name);
-  logger.info(`User switched successfully`);
+  console.log(`User switched successfully`);
 }
 
 /* Create a new user in the database */
@@ -78,7 +78,7 @@ export async function handlerRegister(
     throw new Error("User already exists");
   }
   setUser(user.name);
-  logger.info(`User created successfully`);
+  console.log(`User created successfully`);
 }
 
 /* Resets the users table */
@@ -116,7 +116,7 @@ export async function handlerDeleteUsers(
 
   try {
     await deleteUsers();
-    logger.info("Users deleted successfully");
+    console.log("Users deleted successfully");
 
     // Log successful completion
     logAuditAction(
@@ -139,14 +139,6 @@ export async function handlerGetUsers(): Promise<void> {
   const config = readConfig();
   const currentUserName = config.currentUserName;
   const users = await getUsers();
-
-  // Log structured information about the user list operation
-  logger.info(`Displaying ${users.length} user(s) to console`, {
-    userCount: users.length,
-    currentUser: currentUserName,
-  });
-
-  // Use console.log for actual user display (CLI output)
   users.forEach((user) =>
     console.log(
       `* ${user.name} ${user.name === currentUserName ? "(current)" : ""}`
