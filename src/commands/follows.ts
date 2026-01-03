@@ -5,7 +5,6 @@ import {
   getFeedFollowsForUser,
   deleteFeedFollow,
 } from "src/lib/db/queries/follows";
-import { logger } from "src/lib/utils/logger";
 
 export async function handlerFollowFeed(
   cmdName: string,
@@ -52,13 +51,6 @@ export async function handlerFollowFeed(
       throw new Error(`Feed follow not created`);
     }
 
-    // Log structured information about the feed follow operation
-    logger.info(`Feed follow created successfully`, {
-      feedName: feedFollow.feed_name,
-      userName: feedFollow.user_name,
-    });
-
-    // Use console.log for user-facing success message
     console.log(`Feed follow created successfully:`);
     console.log(`  Feed: ${feedFollow.feed_name}`);
     console.log(`  User: ${feedFollow.user_name}`);
@@ -81,18 +73,11 @@ export async function handlerFollowFeed(
 export async function handlerFollowing(cmdName: string, user: User) {
   const feedsFollowed = await getFeedFollowsForUser(user.id);
 
-  // Log structured information about the feeds listing operation
-  logger.info(`Listing feeds for user`, {
-    userName: user.name,
-    feedCount: feedsFollowed.length,
-  });
-
   if (feedsFollowed.length === 0) {
     console.log(`No feeds followed by ${user.name}`);
     return;
   }
 
-  // Use console.log for user-facing feed listing
   console.log(`Feeds followed by ${user.name}:`);
   console.log("------------------------------");
   feedsFollowed.forEach((feedFollow: any) => {
@@ -115,13 +100,6 @@ export async function handlerUnfollowFeed(
 
   try {
     await deleteFeedFollow(user.id, feedUrl);
-
-    // Log structured information about the unfollow operation
-    logger.info(`Feed unfollowed successfully`, {
-      feedUrl: feedUrl,
-    });
-
-    // Use console.log for user-facing success message
     console.log(`Feed unfollowed successfully: ${feedUrl}`);
   } catch (error) {
     if (error instanceof Error) {

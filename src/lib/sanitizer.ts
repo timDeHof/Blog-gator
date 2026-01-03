@@ -1,4 +1,4 @@
-import { readConfig } from "../../config";
+import { readConfig } from "../config";
 
 type SanitizerConfig = {
   maskPII: boolean;

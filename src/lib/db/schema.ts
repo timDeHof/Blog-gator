@@ -19,8 +19,6 @@ export const users = pgTable("users", {
   isAdmin: boolean("is_admin").notNull().default(false),
 });
 
-export type User = typeof users.$inferSelect;
-
 export const feeds = pgTable("feeds", {
   id: uuid("id").primaryKey().defaultRandom().notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -33,10 +31,7 @@ export const feeds = pgTable("feeds", {
   user_id: uuid("user_id")
     .references(() => users.id, { onDelete: "cascade" })
     .notNull(),
-  lastFetchedAt: timestamp("last_fetched_at"),
 });
-
-export type Feed = typeof feeds.$inferSelect;
 
 export const feed_follows = pgTable(
   "feed_follows",
@@ -62,4 +57,6 @@ export const feed_follows = pgTable(
   }
 );
 
+export type Feed = typeof feeds.$inferSelect;
+export type User = typeof users.$inferSelect;
 export type FeedFollow = typeof feed_follows.$inferSelect;
