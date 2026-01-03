@@ -52,9 +52,16 @@ export async function handlerFollowFeed(
       throw new Error(`Feed follow not created`);
     }
 
-    logger.info(`Feed follow created successfully:`);
-    logger.info(`  Feed: ${feedFollow.feed_name}`);
-    logger.info(`  User: ${feedFollow.user_name}`);
+    // Log structured information about the feed follow operation
+    logger.info(`Feed follow created successfully`, {
+      feedName: feedFollow.feed_name,
+      userName: feedFollow.user_name,
+    });
+
+    // Use console.log for user-facing success message
+    console.log(`Feed follow created successfully:`);
+    console.log(`  Feed: ${feedFollow.feed_name}`);
+    console.log(`  User: ${feedFollow.user_name}`);
   } catch (error) {
     if (error instanceof Error) {
       // Check for unique constraint violation using PostgreSQL error code
@@ -74,15 +81,22 @@ export async function handlerFollowFeed(
 export async function handlerFollowing(cmdName: string, user: User) {
   const feedsFollowed = await getFeedFollowsForUser(user.id);
 
+  // Log structured information about the feeds listing operation
+  logger.info(`Listing feeds for user`, {
+    userName: user.name,
+    feedCount: feedsFollowed.length,
+  });
+
   if (feedsFollowed.length === 0) {
-    logger.info(`No feeds followed by ${user.name}`);
+    console.log(`No feeds followed by ${user.name}`);
     return;
   }
 
-  logger.info(`Feeds followed by ${user.name}:`);
-  logger.info("------------------------------");
+  // Use console.log for user-facing feed listing
+  console.log(`Feeds followed by ${user.name}:`);
+  console.log("------------------------------");
   feedsFollowed.forEach((feedFollow: any) => {
-    logger.info(
+    console.log(
       `  Feed: ${feedFollow.feed_name}\n  URL: ${feedFollow.feed_url}\n`
     );
   });
@@ -101,7 +115,14 @@ export async function handlerUnfollowFeed(
 
   try {
     await deleteFeedFollow(user.id, feedUrl);
-    logger.info(`Feed unfollowed successfully: ${feedUrl}`);
+
+    // Log structured information about the unfollow operation
+    logger.info(`Feed unfollowed successfully`, {
+      feedUrl: feedUrl,
+    });
+
+    // Use console.log for user-facing success message
+    console.log(`Feed unfollowed successfully: ${feedUrl}`);
   } catch (error) {
     if (error instanceof Error) {
       throw error;

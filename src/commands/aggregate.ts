@@ -49,9 +49,8 @@ async function scrapeFeeds() {
 }
 
 async function scrapeFeed(feed: Feed) {
-  await markFeedFetched(feed.id);
-
   const feedData = await fetchFeed(feed.url);
+  await markFeedFetched(feed.id);
 
   logger.info(
     `Feed ${feed.name} collected, ${feedData.channel.item.length} posts found`

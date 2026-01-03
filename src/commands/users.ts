@@ -49,7 +49,7 @@ export async function handlerLogin(
       "USER_NOT_FOUND",
       maskedUsername,
       `User lookup failed for masked username: ${maskedUsername}`
-    );
+    ).catch((err) => logger.error("Failed to write audit log", err));
     throw new Error("User not found");
   }
   setUser(existingUser.name);
@@ -139,8 +139,16 @@ export async function handlerGetUsers(): Promise<void> {
   const config = readConfig();
   const currentUserName = config.currentUserName;
   const users = await getUsers();
+
+  // Log structured information about the user list operation
+  logger.info(`Displaying ${users.length} user(s) to console`, {
+    userCount: users.length,
+    currentUser: currentUserName,
+  });
+
+  // Use console.log for actual user display (CLI output)
   users.forEach((user) =>
-    logger.info(
+    console.log(
       `* ${user.name} ${user.name === currentUserName ? "(current)" : ""}`
     )
   );
