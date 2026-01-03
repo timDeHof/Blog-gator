@@ -5,7 +5,7 @@ import {
   deleteUsers,
   getUsers,
 } from "src/lib/db/queries/users";
-import { logAuditAction } from "../lib/utils/logger";
+import { logAuditAction, logger } from "../lib/utils/logger";
 
 /**
  * Safely masks a username to protect PII
@@ -53,7 +53,7 @@ export async function handlerLogin(
     throw new Error("User not found");
   }
   setUser(existingUser.name);
-  console.log(`User switched successfully`);
+  logger.info(`User switched successfully`);
 }
 
 /* Create a new user in the database */
@@ -78,7 +78,7 @@ export async function handlerRegister(
     throw new Error("User already exists");
   }
   setUser(user.name);
-  console.log(`User created successfully`);
+  logger.info(`User created successfully`);
 }
 
 /* Resets the users table */
@@ -116,7 +116,7 @@ export async function handlerDeleteUsers(
 
   try {
     await deleteUsers();
-    console.log("Users deleted successfully");
+    logger.info("Users deleted successfully");
 
     // Log successful completion
     logAuditAction(
@@ -140,7 +140,7 @@ export async function handlerGetUsers(): Promise<void> {
   const currentUserName = config.currentUserName;
   const users = await getUsers();
   users.forEach((user) =>
-    console.log(
+    logger.info(
       `* ${user.name} ${user.name === currentUserName ? "(current)" : ""}`
     )
   );

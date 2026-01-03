@@ -5,6 +5,7 @@ import {
   getFeedFollowsForUser,
   deleteFeedFollow,
 } from "src/lib/db/queries/follows";
+import { logger } from "src/lib/utils/logger";
 
 export async function handlerFollowFeed(
   cmdName: string,
@@ -51,9 +52,9 @@ export async function handlerFollowFeed(
       throw new Error(`Feed follow not created`);
     }
 
-    console.log(`Feed follow created successfully:`);
-    console.log(`  Feed: ${feedFollow.feed_name}`);
-    console.log(`  User: ${feedFollow.user_name}`);
+    logger.info(`Feed follow created successfully:`);
+    logger.info(`  Feed: ${feedFollow.feed_name}`);
+    logger.info(`  User: ${feedFollow.user_name}`);
   } catch (error) {
     if (error instanceof Error) {
       // Check for unique constraint violation using PostgreSQL error code
@@ -74,14 +75,14 @@ export async function handlerFollowing(cmdName: string, user: User) {
   const feedsFollowed = await getFeedFollowsForUser(user.id);
 
   if (feedsFollowed.length === 0) {
-    console.log(`No feeds followed by ${user.name}`);
+    logger.info(`No feeds followed by ${user.name}`);
     return;
   }
 
-  console.log(`Feeds followed by ${user.name}:`);
-  console.log("------------------------------");
+  logger.info(`Feeds followed by ${user.name}:`);
+  logger.info("------------------------------");
   feedsFollowed.forEach((feedFollow: any) => {
-    console.log(
+    logger.info(
       `  Feed: ${feedFollow.feed_name}\n  URL: ${feedFollow.feed_url}\n`
     );
   });
@@ -100,7 +101,7 @@ export async function handlerUnfollowFeed(
 
   try {
     await deleteFeedFollow(user.id, feedUrl);
-    console.log(`Feed unfollowed successfully: ${feedUrl}`);
+    logger.info(`Feed unfollowed successfully: ${feedUrl}`);
   } catch (error) {
     if (error instanceof Error) {
       throw error;

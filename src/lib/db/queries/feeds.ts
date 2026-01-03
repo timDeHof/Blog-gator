@@ -1,6 +1,7 @@
 import { db } from "..";
 import { eq, sql } from "drizzle-orm";
 import { feeds, users } from "../schema";
+import { logger } from "../../utils/logger";
 
 export async function createFeed(
   feedName: string,
@@ -22,7 +23,7 @@ export async function createFeed(
     return result;
   } catch (error) {
     // Add more detailed error information
-    console.error("Detailed error in createFeed:", error);
+    logger.error("Detailed error in createFeed:", error);
     throw error;
   }
 }

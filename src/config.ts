@@ -1,6 +1,7 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
+import { logger } from "src/lib/utils/logger";
 
 type Config = {
   dbUrl: string;
@@ -34,7 +35,7 @@ export function validateConfig(rawConfig: any) {
     if (typeof rawConfig.mask_pii === "boolean") {
       maskPII = rawConfig.mask_pii;
     } else {
-      console.warn(
+      logger.warn(
         `Invalid type for 'mask_pii': expected boolean, got ${typeof rawConfig.mask_pii}. Using default value: true`
       );
     }

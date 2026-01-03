@@ -2,6 +2,9 @@ import { getNextFeedToFetch, markFeedFetched } from "src/lib/db/queries/feeds";
 import { fetchFeed } from "src/lib/utils/rss";
 import { parseDuration } from "src/lib/utils/time";
 import { Feed } from "src/lib/db/schema";
+import { logger } from "src/lib/utils/logger";
+
+let currentScrape: Promise<void> | null = null;
 
 export async function handlerAgg(cmdName: string, ...args: string[]) {
   if (args.length !== 1) {
@@ -15,18 +18,21 @@ export async function handlerAgg(cmdName: string, ...args: string[]) {
     );
   }
 
-  console.log(`Collecting feeds every ${timeArg}...`);
+  logger.info(`Collecting feeds every ${timeArg}...`);
 
-  scrapeFeeds().catch(handleError);
+  currentScrape = scrapeFeeds().catch(handleError);
 
   const interval = setInterval(() => {
-    scrapeFeeds().catch(handleError);
+    currentScrape = scrapeFeeds().catch(handleError);
   }, timeBetweenRequests);
 
   await new Promise<void>((resolve) => {
-    process.on("SIGINT", () => {
-      console.log("Shutting down feed aggregator...");
+    process.on("SIGINT", async () => {
+      logger.info("Shutting down feed aggregator...");
       clearInterval(interval);
+      if (currentScrape) {
+        await currentScrape;
+      }
       resolve();
     });
   });
@@ -35,10 +41,10 @@ export async function handlerAgg(cmdName: string, ...args: string[]) {
 async function scrapeFeeds() {
   const [feed] = await getNextFeedToFetch();
   if (!feed) {
-    console.log("No feeds to fetch");
+    logger.info("No feeds to fetch");
     return;
   }
-  console.log(`Found a feed to fetch!`);
+  logger.info(`Found a feed to fetch!`);
   await scrapeFeed(feed);
 }
 
@@ -47,13 +53,13 @@ async function scrapeFeed(feed: Feed) {
 
   const feedData = await fetchFeed(feed.url);
 
-  console.log(
+  logger.info(
     `Feed ${feed.name} collected, ${feedData.channel.item.length} posts found`
   );
 }
 
 function handleError(err: unknown) {
-  console.error(
+  logger.error(
     `Error scraping feeds: ${err instanceof Error ? err.message : err}`
   );
 }

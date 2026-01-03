@@ -17,11 +17,12 @@ import {
   handlerFollowing,
   handlerUnfollowFeed,
 } from "./commands/follows";
+import { logger } from "src/lib/utils/logger";
 
 async function main() {
   const args = process.argv.slice(2);
   if (args.length < 1) {
-    console.log("usage: cli <command> [args...]");
+    logger.warn("usage: cli <command> [args...]");
     process.exit(1);
   }
 
@@ -64,9 +65,9 @@ async function main() {
     await runCommand(commandsRegistry, cmdName, ...cmdArgs);
   } catch (err) {
     if (err instanceof Error) {
-      console.error(`Error running command ${cmdName}: ${err.message}`);
+      logger.error(`Error running command ${cmdName}: ${err.message}`);
     } else {
-      console.error(`Error running command ${cmdName}: ${err}`);
+      logger.error(`Error running command ${cmdName}: ${err}`);
     }
     process.exit(1);
   }

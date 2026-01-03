@@ -18,6 +18,7 @@ const configureWinstonLogger = () => {
       fs.chmodSync(logDir, 0o700);
     }
   } catch (error) {
+    // During logger initialization, we must use console.error as logger is not yet available
     console.error(`Failed to setup log directory at ${logDir}:`, error);
     throw error;
   }
@@ -52,7 +53,27 @@ const configureWinstonLogger = () => {
 
   // Add error handling for write failures
   logger.on("error", (error) => {
-    console.error("Winston logging error:", error);
+    // For logger operational errors, we can safely use logger.error since logger is initialized
+    // However, we need to be careful to avoid infinite recursion
+    try {
+      // Create a simple console transport for error logging to avoid circular dependency
+      const errorLogger = winston.createLogger({
+        level: "error",
+        transports: [
+          new winston.transports.Console({
+            format: winston.format.combine(
+              winston.format.timestamp(),
+              winston.format.json()
+            ),
+          }),
+        ],
+      });
+      errorLogger.error("Winston logging error:", error);
+    } catch (fallbackError) {
+      // If even the fallback fails, use console.error as last resort
+      console.error("Winston logging error:", error);
+      console.error("Fallback logging also failed:", fallbackError);
+    }
     // Surface write errors via existing error handling
   });
 
@@ -101,14 +122,48 @@ export async function logAuditAction(
       // Pass log entry as metadata to Winston for proper JSON formatting
       logger.info("", logEntry, (error: unknown) => {
         if (error) {
-          console.error("Failed to write audit log:", error);
+          // For audit log failures, use a fallback logger to maintain consistency
+          try {
+            const errorLogger = winston.createLogger({
+              level: "error",
+              transports: [
+                new winston.transports.Console({
+                  format: winston.format.combine(
+                    winston.format.timestamp(),
+                    winston.format.json()
+                  ),
+                }),
+              ],
+            });
+            errorLogger.error("Failed to write audit log:", error);
+          } catch (fallbackError) {
+            console.error("Failed to write audit log:", error);
+            console.error("Fallback logging also failed:", fallbackError);
+          }
           reject(error);
         } else {
           resolve();
         }
       });
     } catch (error) {
-      console.error("Failed to write audit log:", error);
+      // For audit log failures during setup, use fallback logger for consistency
+      try {
+        const errorLogger = winston.createLogger({
+          level: "error",
+          transports: [
+            new winston.transports.Console({
+              format: winston.format.combine(
+                winston.format.timestamp(),
+                winston.format.json()
+              ),
+            }),
+          ],
+        });
+        errorLogger.error("Failed to write audit log during setup:", error);
+      } catch (fallbackError) {
+        console.error("Failed to write audit log during setup:", error);
+        console.error("Fallback logging also failed:", fallbackError);
+      }
       reject(error);
     }
   });
