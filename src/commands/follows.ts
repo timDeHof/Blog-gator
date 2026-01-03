@@ -3,6 +3,7 @@ import { getFeedByUrl, createFeed } from "src/lib/db/queries/feeds";
 import {
   createFeedFollow,
   getFeedFollowsForUser,
+  deleteFeedFollow,
 } from "src/lib/db/queries/follows";
 
 export async function handlerFollowFeed(
@@ -73,14 +74,37 @@ export async function handlerFollowing(cmdName: string, user: User) {
   const feedsFollowed = await getFeedFollowsForUser(user.id);
 
   if (feedsFollowed.length === 0) {
-    throw new Error(`No feeds followed`);
+    console.log(`No feeds followed by ${user.name}`);
+    return;
   }
 
   console.log(`Feeds followed by ${user.name}:`);
   console.log("------------------------------");
   feedsFollowed.forEach((feedFollow: any) => {
     console.log(
-      `  Feed: ${feedFollow.feeds.name}\n  URL: ${feedFollow.feeds.url}\n`
+      `  Feed: ${feedFollow.feed_name}\n  URL: ${feedFollow.feed_url}\n`
     );
   });
+}
+
+export async function handlerUnfollowFeed(
+  cmdName: string,
+  user: User,
+  ...args: string[]
+) {
+  if (args.length !== 1) {
+    throw new Error(`usage: ${cmdName} <feed url>`);
+  }
+
+  const feedUrl = args[0];
+
+  try {
+    await deleteFeedFollow(user.id, feedUrl);
+    console.log(`Feed unfollowed successfully: ${feedUrl}`);
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error(`Failed to unfollow feed due to an unexpected error`);
+  }
 }

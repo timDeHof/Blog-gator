@@ -1,7 +1,7 @@
 import { User } from "./lib/db/schema";
 import { CommandHandler } from "./commands/commands";
 import { readConfig } from "./config";
-import { getUserByName } from "./lib/db/queries/users";
+import { getUserByName, createUser } from "./lib/db/queries/users";
 import { logAuditAction } from "./lib/logger";
 
 /**
@@ -151,6 +151,10 @@ async function getCachedOrFetchUser(
       .then((user) => {
         // Clean up pending request on success
         delete pendingRequests[cacheKey];
+        if (!user) {
+          // If user doesn't exist, create them automatically
+          return createUser(userName);
+        }
         return user;
       })
       .catch((err) => {

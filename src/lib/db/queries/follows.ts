@@ -1,5 +1,5 @@
 import { db } from "..";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { feed_follows, feeds, users } from "../schema";
 import { logger } from "../../logger";
 import { InputSanitizer } from "../../sanitizer";
@@ -32,7 +32,9 @@ function isCustomError(error: Error): error is CustomError {
  */
 function extractConstraintName(error: DatabaseError): string | null {
   // Try to extract constraint name from error message
-  const constraintMatch = error.message.match(/constraint\s+[`"]([^`"]+)[`"]/i);
+  const constraintMatch = error.message.match(
+    /constraint\s+[`""]([^`""]+)[`""]/i
+  );
   if (constraintMatch && constraintMatch[1]) {
     return constraintMatch[1];
   }
@@ -78,7 +80,10 @@ function sanitizeErrorForLogging(error: unknown): string {
 
       // Remove sensitive information like SQL, constraint names, and stack traces
       errorString = errorString
-        .replace(/\bconstraint\b\s+[`"]([^`"]+)[`"]/gi, "constraint [REDACTED]")
+        .replace(
+          /\bconstraint\b\s+[`""]([^`""]+)[`""]/gi,
+          "constraint [REDACTED]"
+        )
         .replace(
           /\b(WHERE|FROM|INSERT|UPDATE|DELETE|SELECT)\b/gi,
           "[SQL_REDACTED]"
@@ -255,4 +260,33 @@ export async function getFeedFollowsForUser(userId: string) {
     .where(eq(feed_follows.user_id, userId))
     .orderBy(feeds.name);
   return result;
+}
+
+export async function deleteFeedFollow(
+  userId: string,
+  feedUrl: string
+): Promise<void> {
+  // First, get the feed by URL to get the feed_id
+  const feed = await db
+    .select({ id: feeds.id })
+    .from(feeds)
+    .where(eq(feeds.url, feedUrl))
+    .limit(1);
+
+  if (!feed || feed.length === 0) {
+    throw new Error("Feed not found");
+  }
+
+  const feedId = feed[0].id;
+
+  // Delete the feed follow record
+  const result = await db
+    .delete(feed_follows)
+    .where(
+      and(eq(feed_follows.user_id, userId), eq(feed_follows.feed_id, feedId))
+    );
+
+  if (result.count === 0) {
+    throw new Error("Feed follow record not found or already deleted");
+  }
 }
