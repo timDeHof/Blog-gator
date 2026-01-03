@@ -5,29 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1767148005023,
-      "tag": "0000_colossal_namor",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1767238436343,
-      "tag": "0001_unknown_morgan_stark",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1767307462296,
-      "tag": "0002_past_maverick",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1767320238624,
-      "tag": "0003_typical_typhoid_mary",
+      "when": 1767459058817,
+      "tag": "0000_flat_peter_quill",
       "breakpoints": true
     }
   ]
