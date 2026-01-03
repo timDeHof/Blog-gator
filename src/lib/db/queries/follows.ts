@@ -1,8 +1,8 @@
 import { db } from "..";
 import { eq, and } from "drizzle-orm";
 import { feed_follows, feeds, users } from "../schema";
-import { logger } from "../../logger";
-import { InputSanitizer } from "../../sanitizer";
+import { logger } from "../../utils/logger";
+import { InputSanitizer } from "../../utils/sanitizer";
 
 /**
  * Type guard to check if an error is a database error with a code property

@@ -1,4 +1,5 @@
 import { XMLParser } from "fast-xml-parser";
+import { logger } from "./logger";
 
 type RSSFeed = {
   channel: {
@@ -48,14 +49,21 @@ export async function fetchFeed(feedURL: string) {
 
   for (const item of items) {
     const { title, link, description, pubDate } = item;
-    if (!title || !link || !description || !pubDate)
-      throw new Error("Missing required fields in feed item");
+    if (!title || !link || !description || !pubDate) {
+      logger.warn("Skipping feed item due to missing required fields:", {
+        item,
+      });
+      continue;
+    }
     rssItems.push({
       title,
       link,
       description,
       pubDate,
     });
+  }
+  if (rssItems.length === 0) {
+    throw new Error("Feed contains no valid items after filtering");
   }
   const rssFeed: RSSFeed = {
     channel: {

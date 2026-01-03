@@ -2,7 +2,7 @@ import { User } from "./lib/db/schema";
 import { CommandHandler } from "./commands/commands";
 import { readConfig } from "./config";
 import { getUserByName, createUser } from "./lib/db/queries/users";
-import { logAuditAction } from "./lib/logger";
+import { logAuditAction, logger } from "./lib/utils/logger";
 
 /**
  * Get cache TTL from environment variable with fallback to default
@@ -21,7 +21,7 @@ function getCacheTTLFromEnv(envVarName: string, defaultValue: number): number {
 
   // Validate that parsed value is a positive number
   if (isNaN(parsedValue) || parsedValue < 0) {
-    console.warn(
+    logger.warn(
       `Invalid ${envVarName}: '${envValue}'. Using default: ${defaultValue}`
     );
     return defaultValue;

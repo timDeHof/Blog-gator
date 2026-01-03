@@ -3,7 +3,7 @@ import { getUserByName } from "src/lib/db/queries/users";
 import { createFeedFollow } from "src/lib/db/queries/follows";
 import { Feed, User } from "src/lib/db/schema";
 import { readConfig } from "src/config";
-import { logAuditAction } from "src/lib/logger";
+import { logAuditAction, logger } from "src/lib/utils/logger";
 
 export async function handlerAddFeed(
   cmdName: string,
@@ -30,9 +30,9 @@ export async function handlerAddFeed(
     throw new Error(`Feed follow not created`);
   }
 
-  console.log("Feed created and followed successfully:");
-  console.log(`  Feed: ${feedFollow.feed_name}`);
-  console.log(`  User: ${feedFollow.user_name}`);
+  logger.info("Feed created and followed successfully:");
+  logger.info(`  Feed: ${feedFollow.feed_name}`);
+  logger.info(`  User: ${feedFollow.user_name}`);
 }
 
 export async function handlerListFeeds(cmdName: string) {
@@ -68,7 +68,7 @@ export async function handlerListFeeds(cmdName: string) {
     throw new Error(`No feeds found`);
   }
 
-  console.log("Feeds:");
+  logger.info("Feeds:");
   feeds.forEach((item) => {
     const feed = item.feeds as Feed;
     const user = item.users as User;
@@ -78,10 +78,10 @@ export async function handlerListFeeds(cmdName: string) {
 }
 
 function printFeed(feed: Feed, user: User) {
-  console.log(`* ID:        ${feed.id}`);
-  console.log(`* Created:   ${feed.createdAt}`);
-  console.log(`* Updated:   ${feed.updatedAt}`);
-  console.log(`* Name:      ${feed.name}`);
-  console.log(`* URL:       ${feed.url}`);
-  console.log(`* User:      ${user.name}`);
+  logger.info(`* ID:        ${feed.id}`);
+  logger.info(`* Created:   ${feed.createdAt}`);
+  logger.info(`* Updated:   ${feed.updatedAt}`);
+  logger.info(`* Name:      ${feed.name}`);
+  logger.info(`* URL:       ${feed.url}`);
+  logger.info(`* User:      ${user.name}`);
 }
