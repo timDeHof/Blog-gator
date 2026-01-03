@@ -23,7 +23,9 @@ export async function handlerAgg(cmdName: string, ...args: string[]) {
   currentScrape = scrapeFeeds().catch(handleError);
 
   const interval = setInterval(() => {
-    currentScrape = scrapeFeeds().catch(handleError);
+    if (!currentScrape) {
+      currentScrape = scrapeFeeds().catch(handleError);
+    }
   }, timeBetweenRequests);
 
   await new Promise<void>((resolve) => {
@@ -39,13 +41,17 @@ export async function handlerAgg(cmdName: string, ...args: string[]) {
 }
 
 async function scrapeFeeds() {
-  const [feed] = await getNextFeedToFetch();
-  if (!feed) {
-    logger.info("No feeds to fetch");
-    return;
+  try {
+    const [feed] = await getNextFeedToFetch();
+    if (!feed) {
+      logger.info("No feeds to fetch");
+      return;
+    }
+    logger.info(`Found a feed to fetch!`);
+    await scrapeFeed(feed);
+  } finally {
+    currentScrape = null;
   }
-  logger.info(`Found a feed to fetch!`);
-  await scrapeFeed(feed);
 }
 
 async function scrapeFeed(feed: Feed) {
