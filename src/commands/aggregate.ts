@@ -47,7 +47,7 @@ async function scrapeFeeds() {
       logger.info("No feeds to fetch");
       return;
     }
-    logger.info(`Found a feed to fetch!`);
+    logger.info(`Scraping feed: ${feed.name} (${feed.url})`);
     await scrapeFeed(feed);
   } finally {
     currentScrape = null;
