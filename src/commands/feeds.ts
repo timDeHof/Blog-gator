@@ -3,7 +3,7 @@ import { getUserByName } from "src/lib/db/queries/users";
 import { createFeedFollow } from "src/lib/db/queries/follows";
 import { Feed, User } from "src/lib/db/schema";
 import { readConfig } from "src/config";
-import { logAuditAction } from "src/lib/logger";
+import { logAuditAction } from "src/lib/utils/logger";
 
 export async function handlerAddFeed(
   cmdName: string,

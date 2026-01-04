@@ -1,5 +1,5 @@
 import { db } from "..";
-import { eq } from "drizzle-orm";
+import { eq, sql, lt } from "drizzle-orm";
 import { feeds, users } from "../schema";
 
 export async function createFeed(
@@ -13,6 +13,7 @@ export async function createFeed(
       name: feedName,
       url,
       user_id,
+      lastFetchedAt: null,
     })
     .returning();
 
@@ -31,5 +32,34 @@ export async function getFeedByUrl(
   url: string
 ): Promise<typeof feeds.$inferSelect | undefined> {
   const [result] = await db.select().from(feeds).where(eq(feeds.url, url));
+  return result;
+}
+
+export async function markFeedFetched(feedId: string) {
+  const result = await db
+    .update(feeds)
+    .set({
+      lastFetchedAt: new Date(),
+    })
+    .where(eq(feeds.id, feedId))
+    .returning();
+  return result;
+}
+
+export async function getNextFeedToFetch() {
+  const result = await db
+    .select()
+    .from(feeds)
+    .orderBy(sql`${feeds.lastFetchedAt} asc nulls first`)
+    .limit(1);
+  return result;
+}
+
+export async function getAnyFeed() {
+  const result = await db
+    .select()
+    .from(feeds)
+    .orderBy(sql`${feeds.lastFetchedAt} asc nulls first`)
+    .limit(1);
   return result;
 }
