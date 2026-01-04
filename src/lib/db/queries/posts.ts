@@ -2,6 +2,13 @@ import { db } from "..";
 import { NewPost, posts, feeds, feed_follows } from "../schema";
 import { eq, desc } from "drizzle-orm";
 
+/**
+ * Insert a new post into the database and return the inserted row.
+ *
+ * @param post - The post data conforming to the `NewPost` schema to insert.
+ * @returns The newly inserted post record, including any generated fields.
+ * @throws The underlying database error if the insert fails (for example, a constraint violation).
+ */
 export async function createPost(post: NewPost) {
   try {
     const [result] = await db.insert(posts).values(post).returning();
@@ -12,6 +19,13 @@ export async function createPost(post: NewPost) {
   }
 }
 
+/**
+ * Retrieve recent posts from feeds followed by a user.
+ *
+ * @param userId - The ID of the user whose followed feeds should be queried
+ * @param limit - Maximum number of posts to return (default: 10)
+ * @returns An array of post records containing `id`, `createdAt`, `updatedAt`, `title`, `url`, `description`, `publishedAt`, `feedName`, and `feedId`
+ */
 export async function getPostsForUser(userId: string, limit: number = 10) {
   const result = await db
     .select({
