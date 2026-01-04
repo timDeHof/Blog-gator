@@ -7,6 +7,13 @@ import { logger } from "src/lib/utils/logger";
 
 let currentScrape: Promise<void> | null = null;
 
+/**
+ * Starts a recurring feed-scraping loop that fetches feeds at the specified interval and performs a graceful shutdown on SIGINT.
+ *
+ * @param cmdName - The invoked command name used in the usage error message
+ * @param args - Expect a single-element array whose first element is the polling interval string (e.g., "1h 30m", "3500ms")
+ * @throws Error - If the number of arguments is not exactly one or if the provided duration string cannot be parsed
+ */
 export async function handlerAgg(cmdName: string, ...args: string[]) {
   if (args.length !== 1) {
     throw new Error(`usage: ${cmdName} <time_between_reqs>`);
@@ -41,6 +48,12 @@ export async function handlerAgg(cmdName: string, ...args: string[]) {
   });
 }
 
+/**
+ * Attempts to fetch the next feed scheduled for retrieval and, if one is found, processes it.
+ *
+ * If no feed is available, the function returns without processing. The module-level
+ * `currentScrape` state is cleared when the operation completes or fails.
+ */
 async function scrapeFeeds() {
   try {
     const [feed] = await getNextFeedToFetch();
@@ -55,6 +68,11 @@ async function scrapeFeeds() {
   }
 }
 
+/**
+ * Fetches and processes a feed: retrieves its RSS, marks the feed as fetched, creates posts for each item, and logs a summary.
+ *
+ * @param feed - The feed record to scrape (provides id, name, and url)
+ */
 async function scrapeFeed(feed: Feed) {
   const feedData = await fetchFeed(feed.url);
   await markFeedFetched(feed.id);
@@ -86,6 +104,11 @@ async function scrapeFeed(feed: Feed) {
   );
 }
 
+/**
+ * Logs an error that occurred while scraping feeds.
+ *
+ * @param err - The error object or value; if it's an `Error`, its `message` is logged, otherwise the value itself is logged
+ */
 function handleError(err: unknown) {
   logger.error(
     `Error scraping feeds: ${err instanceof Error ? err.message : err}`
