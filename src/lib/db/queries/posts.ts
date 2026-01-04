@@ -10,13 +10,8 @@ import { eq, desc } from "drizzle-orm";
  * @throws The underlying database error if the insert fails (for example, a constraint violation).
  */
 export async function createPost(post: NewPost) {
-  try {
-    const [result] = await db.insert(posts).values(post).returning();
-    return result;
-  } catch (error) {
-    // Re-throw to let caller handle duplicates
-    throw error;
-  }
+  const [result] = await db.insert(posts).values(post).returning();
+  return result;
 }
 
 /**

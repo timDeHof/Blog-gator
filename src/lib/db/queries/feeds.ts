@@ -1,5 +1,5 @@
 import { db } from "..";
-import { eq, sql, lt } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { feeds, users } from "../schema";
 
 /**
@@ -72,20 +72,6 @@ export async function markFeedFetched(feedId: string) {
  * @returns An array containing at most one feed row ordered by `lastFetchedAt` ascending with nulls first; empty if no feeds exist.
  */
 export async function getNextFeedToFetch() {
-  const result = await db
-    .select()
-    .from(feeds)
-    .orderBy(sql`${feeds.lastFetchedAt} asc nulls first`)
-    .limit(1);
-  return result;
-}
-
-/**
- * Selects a single feed, preferring feeds that have never been fetched or were fetched least recently.
- *
- * @returns An array containing the selected feed row, or an empty array if no feeds exist
- */
-export async function getAnyFeed() {
   const result = await db
     .select()
     .from(feeds)

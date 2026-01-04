@@ -11,8 +11,6 @@ export function parseDuration(durationStr: string) {
   const match = durationStr.match(regex);
   if (!match) return;
 
-  if (match.length !== 3) return;
-
   const value = parseInt(match[1], 10);
   const unit = match[2];
   switch (unit) {

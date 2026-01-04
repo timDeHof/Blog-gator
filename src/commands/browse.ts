@@ -31,10 +31,15 @@ export async function handlerBrowse(
 
   console.log(`Found ${posts.length} posts for user ${user.name}:`);
   console.log("=====================================");
-  for (let post of posts) {
-    console.log(`${post.publishedAt} from ${post.feedName}`);
+  for (const post of posts) {
+    const publishedTime = post.publishedAt
+      ? post.publishedAt.toLocaleString()
+      : "Unknown date";
+    console.log(`${publishedTime} from ${post.feedName}`);
     console.log(`--- ${post.title} ---`);
-    console.log(`    ${post.description}`);
+    if (post.description) {
+      console.log(`     ${post.description}`);
+    }
     console.log(`Link: ${post.url}`);
     console.log("=====================================");
   }

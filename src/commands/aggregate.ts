@@ -75,13 +75,18 @@ async function scrapeFeeds() {
  */
 async function scrapeFeed(feed: Feed) {
   const feedData = await fetchFeed(feed.url);
-  await markFeedFetched(feed.id);
   let newPostsCount = 0;
   let duplicatePostsCount = 0;
   for (let item of feedData.channel.item) {
     const now = new Date();
 
     try {
+      const publishedAt = item.pubDate ? new Date(item.pubDate) : null;
+      if (publishedAt && isNaN(publishedAt.getTime())) {
+        logger.warn(
+          `Invalid pubDate for post "${item.title}": ${item.pubDate}`
+        );
+      }
       await createPost({
         url: item.link,
         feedId: feed.id,
@@ -89,19 +94,43 @@ async function scrapeFeed(feed: Feed) {
         createdAt: now,
         updatedAt: now,
         description: item.description,
-        publishedAt: new Date(item.pubDate),
+        publishedAt:
+          publishedAt && !isNaN(new Date(item.pubDate).getTime())
+            ? new Date(item.pubDate)
+            : null,
       } satisfies NewPost);
-      console.log(`Found post: %s`, item.title);
+      logger.info(`Found post: ${item.title}`);
       newPostsCount++;
     } catch (error) {
-      // Post already exists, skip it
-      duplicatePostsCount++;
-      continue;
+      if (isUniqueConstraintViolation(error)) {
+        // Post already exists, skip it
+        duplicatePostsCount++;
+        continue;
+      }
+      // Re-throw other errors
+      throw error;
     }
   }
+  await markFeedFetched(feed.id);
   logger.info(
     `Feed ${feed.name} collected, ${newPostsCount} new posts found, ${duplicatePostsCount} duplicates skipped`
   );
+}
+
+/**
+ * Checks if the error is a unique constraint violation.
+ *
+ * @param error - The error to check
+ * @returns True if the error is a unique constraint violation, false otherwise
+ */
+function isUniqueConstraintViolation(error: unknown): boolean {
+  if (error instanceof Error) {
+    return (
+      error.message.includes("Unique constraint failed") ||
+      error.message.includes("duplicate key value violates unique constraint")
+    );
+  }
+  return false;
 }
 
 /**
