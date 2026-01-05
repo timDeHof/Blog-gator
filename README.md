@@ -36,6 +36,7 @@ This project solves the problem of ever-increasing browser tabs and the need to 
     - [Setting up the Development Environment](#setting-up-the-development-environment)
     - [Running Tests](#running-tests)
     - [Building the Project](#building-the-project)
+    - [Extending the Project](#extending-the-project)
   - [Contributing](#contributing)
   - [Testing](#testing)
   - [License](#license)
@@ -161,6 +162,17 @@ The project is run on-the-fly with `tsx`. You can also build it with `tsc`.
 ```bash
 npm run typecheck
 ```
+
+### Extending the Project
+I would like to add these features to the project in the near future:
+* [ ] Add sorting and filtering options to the browse command
+* [ ] Add pagination to the browse command
+* [ ] Add concurrency to the agg command so that it can fetch more frequently
+* [ ] Add a search command that allows for fuzzy searching of posts
+* [ ] Add bookmarking or liking posts
+* [ ] Add a TUI that allows you to select a post in the terminal and view it in a more readable format (either in the terminal or open in a browser)
+* [ ] Add an HTTP API (and authentication/authorization) that allows other users to interact with the service remotely
+* [ ] Write a service manager that keeps the agg command running in the background and restarts it if it crashes
 
 ## Contributing
 
