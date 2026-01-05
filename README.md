@@ -119,7 +119,7 @@ Blog-gator is operated via a series of commands. Here’s a quick tour of how to
 
 Here are the available commands:
 
--   `register <username`: Create a new user account.
+-   `register <username>`: Create a new user account.
 -   `login <username>`: Log in to your account.
 -   `users`: List all registered users.
 -   `reset`: Deletes all users (requires authentication).
