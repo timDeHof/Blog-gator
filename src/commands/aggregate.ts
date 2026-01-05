@@ -81,11 +81,10 @@ async function scrapeFeeds() {
  */
 async function scrapeFeed(feed: Feed) {
   const feedData = await fetchFeed(feed.url);
+  const now = new Date();
   let newPostsCount = 0;
   let duplicatePostsCount = 0;
   for (let item of feedData.channel.item) {
-    const now = new Date();
-
     try {
       const publishedAt = item.pubDate ? new Date(item.pubDate) : null;
       if (publishedAt && isNaN(publishedAt.getTime())) {
