@@ -45,7 +45,7 @@ This project solves the problem of ever-increasing browser tabs and the need to 
 
 ### Prerequisites
 
-- Node.js (v18 or higher recommended, see `.nvmrc`)
+- Node.js (v22.15.0 recommended, see `.nvmrc`)
 - npm
 - PostgreSQL database
 
@@ -53,7 +53,7 @@ This project solves the problem of ever-increasing browser tabs and the need to 
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/your-username/blog-gator.git
+    git clone https://github.com/timdehof/blog-gator.git
     cd blog-gator
     ```
 
@@ -83,50 +83,50 @@ Blog-gator is operated via a series of commands. Here’s a quick tour of how to
 
 1.  **Register a new user:**
     ```bash
-    npm start register <username> <password>
+    npm run start register <username>
     ```
 
 2.  **Log in:**
     ```bash
-    npm start login <username> <password>
+    npm run start login <username>
     ```
     A session token will be created for you.
 
 3.  **Add a feed:**
     ```bash
-    npm start addfeed <feed-url>
+    npm run start addfeed <feed-name> <feed-url>
     ```
-    Example: `npm start addfeed https://example.com/rss.xml`
+    Example: `npm start addfeed "example rss" "https://example.com/rss.xml"`
 
 4.  **Follow a feed:**
     ```bash
-    npm start follow <feed-id>
+    npm run start follow <feed-url>
     ```
-    You can get the `<feed-id>` by running `npm start feeds`.
+    You can get the `<feed-url>` by running `npm run start feeds`.
 
 5.  **Aggregate posts:**
     ```bash
-    npm start agg
+    npm run start agg
     ```
     This fetches the latest posts from all feeds.
 
 6.  **Browse your followed feeds:**
     ```bash
-    npm start browse
+    npm run start browse
     ```
 
 ## Commands
 
 Here are the available commands:
 
--   `register <username> <password>`: Create a new user account.
--   `login <username> <password>`: Log in to your account.
+-   `register <username>`: Create a new user account.
+-   `login <username>`: Log in to your account.
 -   `users`: List all registered users.
--   `reset`: Deletes all users (admin-only).
--   `addfeed <url>`: Add a new RSS feed to the system.
+-   `reset`: Deletes all users (requires authentication).
+-   `addfeed <feed-name> <feed-url>`: Add a new RSS feed to the system.
 -   `feeds`: List all available feeds.
--   `follow <feed-id>`: Follow a feed.
--   `unfollow <feed-id>`: Unfollow a feed.
+-   `follow <feed-url>`: Follow a feed.
+-   `unfollow <feed-url>`: Unfollow a feed.
 -   `following`: List all the feeds you are following.
 -   `agg`: Aggregate new posts from all feeds.
 -   `browse`: Browse posts from your followed feeds.
@@ -135,7 +135,7 @@ Here are the available commands:
 
 The application is configured via environment variables. Create a `.env` file in the project root.
 
-```
+```env
 # .env file
 DATABASE_URL="postgresql://<user>:<password>@<host>:<port>/<database>"
 ```
@@ -174,9 +174,9 @@ The project currently lacks a dedicated testing framework. This is a great area 
 
 ## License
 
-This project is licensed under the ISC License. See the `LICENSE` file for details.
+This project is licensed under the ISC License.
 
 ## Authors & Acknowledgments
 
--   This project was created by the Tim DeHof.
+-   This project was created by Tim DeHof.
 -   Thanks to the creators of Drizzle ORM, Winston, and other open-source libraries used.
