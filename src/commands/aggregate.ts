@@ -33,18 +33,24 @@ export async function handlerAgg(cmdName: string, ...args: string[]) {
   const interval = setInterval(() => {
     if (!currentScrape) {
       currentScrape = scrapeFeeds().catch(handleError);
+    } else {
+      logger.debug(
+        "Skipping scheduled scrape - previous scrape still in progress."
+      );
     }
   }, timeBetweenRequests);
 
   await new Promise<void>((resolve) => {
-    process.on("SIGINT", async () => {
+    const shutdown = async () => {
       logger.info("Shutting down feed aggregator...");
       clearInterval(interval);
       if (currentScrape) {
         await currentScrape;
       }
+      process.removeListener("SIGINT", shutdown);
       resolve();
-    });
+    };
+    process.once("SIGINT", shutdown);
   });
 }
 
