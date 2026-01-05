@@ -5,7 +5,7 @@ import {
   deleteUsers,
   getUsers,
 } from "src/lib/db/queries/users";
-import { logAuditAction } from "../lib/logger";
+import { logAuditAction } from "../lib/utils/logger";
 
 /**
  * Safely masks a username to protect PII

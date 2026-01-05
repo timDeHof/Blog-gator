@@ -3,8 +3,19 @@ import { getUserByName } from "src/lib/db/queries/users";
 import { createFeedFollow } from "src/lib/db/queries/follows";
 import { Feed, User } from "src/lib/db/schema";
 import { readConfig } from "src/config";
-import { logAuditAction } from "src/lib/logger";
+import { logAuditAction } from "src/lib/utils/logger";
 
+/**
+ * Create a new feed with the given name and URL and make the current user follow it.
+ *
+ * @param cmdName - The command name used to construct the usage message on invalid arguments
+ * @param user - The user who will be recorded as the creator and follower of the feed
+ * @param args - Expected to contain exactly two elements: the feed name and the feed URL
+ *
+ * @throws Error If `args` does not contain exactly two elements (usage error)
+ * @throws Error If the feed could not be created
+ * @throws Error If the follow record for the user could not be created
+ */
 export async function handlerAddFeed(
   cmdName: string,
   user: User,

@@ -2,7 +2,7 @@ import { User } from "./lib/db/schema";
 import { CommandHandler } from "./commands/commands";
 import { readConfig } from "./config";
 import { getUserByName, createUser } from "./lib/db/queries/users";
-import { logAuditAction } from "./lib/logger";
+import { logAuditAction } from "./lib/utils/logger";
 
 /**
  * Get cache TTL from environment variable with fallback to default

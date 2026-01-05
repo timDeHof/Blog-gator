@@ -17,7 +17,16 @@ import {
   handlerFollowing,
   handlerUnfollowFeed,
 } from "./commands/follows";
+import { handlerBrowse } from "./commands/browse";
 
+/**
+ * Parse CLI arguments, register available commands, and execute the requested command.
+ *
+ * Registers built-in command handlers (including those wrapped with access-control middleware),
+ * runs the command named by the first CLI argument with remaining arguments, and exits the process.
+ * If no command is provided it prints a usage message and exits with code 1. On command execution
+ * errors it logs the error and exits with code 1; on success it exits with code 0.
+ */
 async function main() {
   const args = process.argv.slice(2);
   if (args.length < 1) {
@@ -58,6 +67,11 @@ async function main() {
     commandsRegistry,
     "unfollow",
     middlewareLoggedIn(handlerUnfollowFeed)
+  );
+  await registerCommand(
+    commandsRegistry,
+    "browse",
+    middlewareLoggedIn(handlerBrowse)
   );
 
   try {
